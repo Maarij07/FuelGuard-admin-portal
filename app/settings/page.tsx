@@ -108,14 +108,18 @@ const SECTION_CONTENT: Record<SettingsSection, React.ReactNode> = {
   ),
   integrations: (
     <>
-      <SettingRow label="Socket.io Endpoint" sub="Real-time WebSocket server URL">
-        <input defaultValue="wss://api.fuelguard.io/ws" className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-[14px] text-[#1C2536] focus:outline-none focus:ring-2 focus:ring-[#00B4A6] w-64" />
+      <SettingRow label="API Base URL" sub="Railway-deployed REST API base URL">
+        <input
+          readOnly
+          defaultValue={process.env.NEXT_PUBLIC_API_URL ?? "https://web-production-0cb0e.up.railway.app"}
+          className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-[14px] text-[#919EAB] bg-[#F4F6F8] focus:outline-none w-64 cursor-not-allowed"
+        />
       </SettingRow>
-      <SettingRow label="API Base URL" sub="REST API base URL for data fetching">
-        <input defaultValue="https://api.fuelguard.io/v1" className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-[14px] text-[#1C2536] focus:outline-none focus:ring-2 focus:ring-[#00B4A6] w-64" />
+      <SettingRow label="IoT Device Auth" sub="BLE nozzle devices authenticate via Firebase Auth">
+        <span className="text-[13px] font-medium text-[#22C55E] bg-[#F0FDF4] px-3 py-1.5 rounded-lg">Firebase Auth (Active)</span>
       </SettingRow>
-      <SettingRow label="API Key" sub="Used to authenticate all outbound requests">
-        <input type="password" defaultValue="sk-fp-xxxxxxxxxxxxxx" className="border border-[#E5E7EB] rounded-lg px-3 py-2 text-[14px] text-[#1C2536] focus:outline-none focus:ring-2 focus:ring-[#00B4A6] w-64" />
+      <SettingRow label="Admin Panel Auth" sub="JWT tokens stored as httpOnly cookies">
+        <span className="text-[13px] font-medium text-[#00B4A6] bg-[#E6F7F6] px-3 py-1.5 rounded-lg">JWT + HttpOnly Cookies</span>
       </SettingRow>
     </>
   ),

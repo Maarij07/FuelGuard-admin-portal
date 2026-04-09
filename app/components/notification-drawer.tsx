@@ -1,44 +1,68 @@
 "use client";
 
-import { X, ShieldAlert, Activity, CheckCircle, AlertTriangle } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { X, ShieldAlert, CheckCircle, AlertTriangle, Activity } from "lucide-react";
+import type { FraudAlert, FraudSeverity } from "@/lib/types";
 
-interface Notification {
-  id: string;
-  type: "fraud" | "session" | "resolved" | "warning";
-  title: string;
-  body: string;
-  time: string;
-  read: boolean;
-}
-
-const NOTIFICATIONS: Notification[] = [
-  { id: "1", type: "fraud", title: "Fraud Detected", body: "Nozzle N-02 — delta 2.6 L (ALT-0041)", time: "2 min ago", read: false },
-  { id: "2", type: "fraud", title: "Fraud Detected", body: "Nozzle N-03 — delta 0.7 L (ALT-0040)", time: "38 min ago", read: false },
-  { id: "3", type: "warning", title: "Threshold Exceeded", body: "Nozzle N-01 sensor variance above warning level", time: "1 hr ago", read: false },
-  { id: "4", type: "session", title: "New Session Started", body: "Active dispensing on N-05 — SES-8821", time: "1 hr ago", read: true },
-  { id: "5", type: "resolved", title: "Alert Resolved", body: "ALT-0038 marked resolved by Station Admin", time: "3 hrs ago", read: true },
-  { id: "6", type: "session", title: "New Session Started", body: "Active dispensing on N-01 — SES-8820", time: "4 hrs ago", read: true },
-  { id: "7", type: "resolved", title: "Alert Resolved", body: "ALT-0037 marked resolved by Ali Khan", time: "Yesterday", read: true },
-];
-
-const TYPE_CONFIG = {
-  fraud: { icon: ShieldAlert, color: "#EF4444", bg: "#FEF2F2" },
-  session: { icon: Activity, color: "#00B4A6", bg: "#E6F7F6" },
-  resolved: { icon: CheckCircle, color: "#22C55E", bg: "#F0FDF4" },
-  warning: { icon: AlertTriangle, color: "#F59E0B", bg: "#FFFBEB" },
+const SEVERITY_ICON: Record<FraudSeverity, { icon: typeof ShieldAlert; color: string; bg: string }> = {
+  low:      { icon: AlertTriangle, color: "#F59E0B", bg: "#FFFBEB" },
+  medium:   { icon: ShieldAlert,   color: "#F59E0B", bg: "#FFFBEB" },
+  high:     { icon: ShieldAlert,   color: "#EF4444", bg: "#FEF2F2" },
+  critical: { icon: ShieldAlert,   color: "#EF4444", bg: "#FEF2F2" },
 };
 
-interface NotificationDrawerProps {
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins  = Math.floor(diff / 60_000);
+  const hours = Math.floor(mins  / 60);
+  const days  = Math.floor(hours / 24);
+  if (days  > 1)  return `${days}d ago`;
+  if (days  === 1) return "Yesterday";
+  if (hours > 1)  return `${hours}h ago`;
+  if (hours === 1) return "1 hr ago";
+  if (mins  > 1)  return `${mins} min ago`;
+  return "Just now";
+}
+
+interface Props {
   open: boolean;
   onClose: () => void;
 }
 
-export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
-  const unread = NOTIFICATIONS.filter((n) => !n.read).length;
+export function NotificationDrawer({ open, onClose }: Props) {
+  const [alerts,  setAlerts]  = useState<FraudAlert[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [read,    setRead]    = useState<Set<string>>(new Set());
+
+  const fetchAlerts = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/v1/fraud/alerts?limit=20`,
+        { credentials: "include" }
+      );
+      if (res.ok) {
+        const data: { items: FraudAlert[] } = await res.json();
+        setAlerts(data.items ?? []);
+      }
+    } catch {
+      // retain last state
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch when drawer opens
+  useEffect(() => {
+    if (open) fetchAlerts();
+  }, [open, fetchAlerts]);
+
+  const unreadCount = alerts.filter((a) => !read.has(a.id)).length;
+
+  const markAllRead = () => setRead(new Set(alerts.map((a) => a.id)));
 
   return (
     <>
-      {/* Backdrop */}
       {open && (
         <div
           className="fixed inset-0 z-40"
@@ -47,7 +71,6 @@ export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
         />
       )}
 
-      {/* Drawer */}
       <div
         className="fixed top-0 right-0 h-full w-[380px] bg-white z-50 flex flex-col"
         style={{
@@ -60,16 +83,21 @@ export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#E5E7EB] shrink-0">
           <div className="flex items-center gap-2">
             <h2 className="text-[16px] font-semibold text-[#1C2536]">Notifications</h2>
-            {unread > 0 && (
+            {unreadCount > 0 && (
               <span className="text-[11px] font-semibold bg-[#FEF2F2] text-[#EF4444] px-2 py-0.5 rounded-full">
-                {unread} new
+                {unreadCount} new
               </span>
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button className="text-[12px] font-medium text-[#00B4A6] hover:underline">
-              Mark all read
-            </button>
+            {unreadCount > 0 && (
+              <button
+                onClick={markAllRead}
+                className="text-[12px] font-medium text-[#00B4A6] hover:underline"
+              >
+                Mark all read
+              </button>
+            )}
             <button
               onClick={onClose}
               className="p-1.5 rounded-lg hover:bg-[#F4F6F8] text-[#637381] transition-colors"
@@ -81,46 +109,88 @@ export function NotificationDrawer({ open, onClose }: NotificationDrawerProps) {
 
         {/* List */}
         <div className="flex-1 overflow-y-auto">
-          {NOTIFICATIONS.map((n) => {
-            const cfg = TYPE_CONFIG[n.type];
-            return (
-              <div
-                key={n.id}
-                className={`flex gap-3 px-5 py-4 border-b border-[#E5E7EB] last:border-0 cursor-pointer hover:bg-[#F4F6F8] transition-colors ${!n.read ? "bg-[#FAFBFF]" : ""}`}
-              >
-                {/* Icon */}
-                <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
-                  style={{ background: cfg.bg }}
-                >
-                  <cfg.icon size={16} strokeWidth={1.5} color={cfg.color} />
+          {loading ? (
+            Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="flex gap-3 px-5 py-4 border-b border-[#E5E7EB]">
+                <div className="w-9 h-9 rounded-lg bg-[#F4F6F8] animate-pulse shrink-0" />
+                <div className="flex-1 flex flex-col gap-1.5">
+                  <div className="h-3 bg-[#F4F6F8] rounded animate-pulse w-2/3" />
+                  <div className="h-3 bg-[#F4F6F8] rounded animate-pulse w-full" />
                 </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className={`text-[13px] ${!n.read ? "font-semibold text-[#1C2536]" : "font-medium text-[#637381]"}`}>
-                      {n.title}
-                    </p>
-                    <span className="text-[11px] text-[#919EAB] shrink-0">{n.time}</span>
-                  </div>
-                  <p className="text-[12px] text-[#919EAB] mt-0.5 truncate">{n.body}</p>
-                </div>
-
-                {/* Unread dot */}
-                {!n.read && (
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#EF4444] shrink-0 mt-1.5" />
-                )}
               </div>
-            );
-          })}
+            ))
+          ) : alerts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full gap-3 text-center px-8">
+              <div className="w-12 h-12 rounded-full bg-[#F0FDF4] flex items-center justify-center">
+                <CheckCircle size={24} color="#22C55E" strokeWidth={1.5} />
+              </div>
+              <p className="text-[14px] font-semibold text-[#1C2536]">All clear</p>
+              <p className="text-[13px] text-[#919EAB]">No fraud alerts at this time</p>
+            </div>
+          ) : (
+            alerts.map((alert) => {
+              const cfg    = SEVERITY_ICON[alert.severity];
+              const isRead = read.has(alert.id);
+              return (
+                <div
+                  key={alert.id}
+                  onClick={() => setRead((prev) => new Set([...prev, alert.id]))}
+                  className={`flex gap-3 px-5 py-4 border-b border-[#E5E7EB] last:border-0 cursor-pointer hover:bg-[#F4F6F8] transition-colors ${
+                    !isRead ? "bg-[#FAFBFF]" : ""
+                  }`}
+                >
+                  <div
+                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0 mt-0.5"
+                    style={{ background: cfg.bg }}
+                  >
+                    <cfg.icon size={16} strokeWidth={1.5} color={cfg.color} />
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className={`text-[13px] ${!isRead ? "font-semibold text-[#1C2536]" : "font-medium text-[#637381]"}`}>
+                        {alert.alert_type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                      </p>
+                      <span className="text-[11px] text-[#919EAB] shrink-0">
+                        {relativeTime(alert.created_at)}
+                      </span>
+                    </div>
+                    <p className="text-[12px] text-[#919EAB] mt-0.5 truncate">
+                      {alert.nozzle_id ? `Nozzle ${alert.nozzle_id} — ` : ""}
+                      {alert.description || `${alert.severity} severity alert`}
+                    </p>
+                    <div className="flex items-center gap-1 mt-1">
+                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full capitalize ${
+                        alert.status === "resolved"
+                          ? "bg-[#F0FDF4] text-[#22C55E]"
+                          : alert.status === "escalated"
+                          ? "bg-[#FFFBEB] text-[#F59E0B]"
+                          : "bg-[#FEF2F2] text-[#EF4444]"
+                      }`}>
+                        {alert.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {!isRead && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#EF4444] shrink-0 mt-1.5" />
+                  )}
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-[#E5E7EB] shrink-0">
-          <button className="w-full py-2 text-[13px] font-semibold text-[#00B4A6] hover:bg-[#E6F7F6] rounded-lg transition-colors">
-            View All Notifications
-          </button>
+          <a
+            href="/fraud"
+            onClick={onClose}
+            className="flex items-center justify-center w-full py-2 text-[13px] font-semibold text-[#00B4A6] hover:bg-[#E6F7F6] rounded-lg transition-colors gap-2"
+          >
+            <Activity size={14} strokeWidth={1.5} />
+            View All Fraud Alerts
+          </a>
         </div>
       </div>
     </>

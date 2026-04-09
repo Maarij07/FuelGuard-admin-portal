@@ -15,45 +15,48 @@ import {
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 
-const NAV_GROUPS = [
-  {
-    label: "OVERVIEW",
-    items: [{ label: "Dashboard", icon: LayoutDashboard, href: "/" }],
-  },
-  {
-    label: "MONITORING",
-    items: [
-      { label: "Live Nozzle Monitor", icon: Radio, href: "/nozzles" },
-      { label: "Fraud Alerts", icon: ShieldAlert, href: "/fraud", badge: 3 },
-    ],
-  },
-  {
-    label: "TRANSACTIONS",
-    items: [
-      { label: "All Transactions", icon: ArrowLeftRight, href: "/transactions" },
-      { label: "Reports", icon: BarChart3, href: "/reports" },
-    ],
-  },
-  {
-    label: "OPERATIONS",
-    items: [
-      { label: "Employee Management", icon: Users, href: "/employees" },
-      { label: "Station Settings", icon: Settings, href: "/settings" },
-    ],
-  },
-  {
-    label: "ACCOUNT",
-    items: [
-      { label: "Profile", icon: User, href: "/profile" },
-      { label: "Settings", icon: Settings, href: "/account-settings" },
-    ],
-  },
-];
+interface Props {
+  openFraudCount: number;
+}
 
-export function Sidebar() {
+export function Sidebar({ openFraudCount }: Props) {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
-  const active = pathname;
+
+  const NAV_GROUPS = [
+    {
+      label: "OVERVIEW",
+      items: [{ label: "Dashboard", icon: LayoutDashboard, href: "/" }],
+    },
+    {
+      label: "MONITORING",
+      items: [
+        { label: "Live Nozzle Monitor", icon: Radio, href: "/nozzles" },
+        { label: "Fraud Alerts", icon: ShieldAlert, href: "/fraud", badge: openFraudCount > 0 ? openFraudCount : null },
+      ],
+    },
+    {
+      label: "TRANSACTIONS",
+      items: [
+        { label: "All Transactions", icon: ArrowLeftRight, href: "/transactions" },
+        { label: "Reports", icon: BarChart3, href: "/reports" },
+      ],
+    },
+    {
+      label: "OPERATIONS",
+      items: [
+        { label: "Employee Management", icon: Users, href: "/employees" },
+        { label: "Station Settings", icon: Settings, href: "/settings" },
+      ],
+    },
+    {
+      label: "ACCOUNT",
+      items: [
+        { label: "Profile", icon: User, href: "/profile" },
+        { label: "Settings", icon: Settings, href: "/account-settings" },
+      ],
+    },
+  ];
 
   return (
     <aside
@@ -93,7 +96,7 @@ export function Sidebar() {
               </p>
             )}
             {group.items.map((item) => {
-              const isActive = active === item.href;
+              const isActive = pathname === item.href;
               return (
                 <a
                   key={item.href}
@@ -111,7 +114,7 @@ export function Sidebar() {
                   {!collapsed && (
                     <span className="flex-1 whitespace-nowrap">{item.label}</span>
                   )}
-                  {!collapsed && item.badge && (
+                  {!collapsed && item.badge != null && item.badge > 0 && (
                     <span className="text-[11px] font-semibold bg-[#FEF2F2] text-[#EF4444] px-2 py-0.5 rounded-full">
                       {item.badge}
                     </span>

@@ -8,24 +8,42 @@ import { SearchModal } from "./search-modal";
 import { LogoutModal } from "./logout-modal";
 
 const PAGE_TITLES: Record<string, string> = {
-  "/": "Dashboard",
-  "/nozzles": "Live Nozzle Monitor",
-  "/fraud": "Fraud Alerts",
-  "/transactions": "All Transactions",
-  "/reports": "Reports",
-  "/employees": "Employee Management",
-  "/settings": "Station Settings",
-  "/profile": "Profile",
-  "/account-settings": "Account Settings",
+  "/":                "Dashboard",
+  "/nozzles":         "Live Nozzle Monitor",
+  "/fraud":           "Fraud Alerts",
+  "/transactions":    "All Transactions",
+  "/reports":         "Reports",
+  "/employees":       "Employee Management",
+  "/settings":        "Station Settings",
+  "/profile":         "Profile",
+  "/account-settings":"Account Settings",
 };
 
-const UNREAD_COUNT = 3;
+interface ShellUser {
+  name: string;
+  email: string;
+  uid: string;
+}
 
-export function TopBar() {
+interface Props {
+  user: ShellUser | null;
+  openFraudCount: number;
+}
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((w) => w[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase() || "AD";
+}
+
+export function TopBar({ user, openFraudCount }: Props) {
   const pathname = usePathname();
-  const title = PAGE_TITLES[pathname] ?? "Fuel Guard";
+  const title    = PAGE_TITLES[pathname] ?? "Fuel Guard";
 
-  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifOpen,  setNotifOpen]  = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [avatarOpen, setAvatarOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -55,6 +73,10 @@ export function TopBar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const displayName = user?.name  ?? "Admin";
+  const displayEmail = user?.email ?? "";
+  const initials    = getInitials(displayName);
+
   return (
     <>
       <header className="h-16 bg-white border-b border-[#E5E7EB] flex items-center px-8 gap-4 shrink-0 relative z-30">
@@ -79,9 +101,9 @@ export function TopBar() {
           aria-label="Notifications"
         >
           <Bell size={20} strokeWidth={1.5} />
-          {UNREAD_COUNT > 0 && (
+          {openFraudCount > 0 && (
             <span className="absolute top-1 right-1 min-w-[16px] h-4 bg-[#EF4444] rounded-full flex items-center justify-center text-[10px] font-bold text-white px-0.5">
-              {UNREAD_COUNT}
+              {openFraudCount > 99 ? "99+" : openFraudCount}
             </span>
           )}
         </button>
@@ -94,10 +116,12 @@ export function TopBar() {
             onClick={() => setAvatarOpen((p) => !p)}
             className="flex items-center gap-2 p-1 pr-2 rounded-lg hover:bg-[#F4F6F8] transition-colors"
           >
-            <div className="w-8 h-8 rounded-full bg-[#1A2744] flex items-center justify-center text-white text-[13px] font-semibold">SA</div>
+            <div className="w-8 h-8 rounded-full bg-[#1A2744] flex items-center justify-center text-white text-[13px] font-semibold">
+              {initials}
+            </div>
             <div className="text-left">
-              <p className="text-[13px] font-medium text-[#1C2536]">Station Admin</p>
-              <p className="text-[11px] text-[#919EAB]">admin@fuelguard.io</p>
+              <p className="text-[13px] font-medium text-[#1C2536]">{displayName}</p>
+              <p className="text-[11px] text-[#919EAB]">{displayEmail}</p>
             </div>
             <ChevronDown
               size={14}
@@ -107,15 +131,14 @@ export function TopBar() {
             />
           </button>
 
-          {/* Dropdown */}
           {avatarOpen && (
             <div
               className="absolute right-0 top-full mt-2 w-52 bg-white rounded-xl py-1 z-50"
               style={{ boxShadow: "0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.05)", border: "1px solid #E5E7EB" }}
             >
               <div className="px-4 py-2.5 border-b border-[#E5E7EB]">
-                <p className="text-[13px] font-semibold text-[#1C2536]">Station Admin</p>
-                <p className="text-[11px] text-[#919EAB]">admin@fuelguard.io</p>
+                <p className="text-[13px] font-semibold text-[#1C2536]">{displayName}</p>
+                <p className="text-[11px] text-[#919EAB]">{displayEmail}</p>
               </div>
 
               <a

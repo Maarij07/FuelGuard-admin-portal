@@ -1,11 +1,12 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 
-const DATA = [
-  { name: "Verified", value: 94, color: "#00B4A6" },
-  { name: "Fraud", value: 6, color: "#EF4444" },
-];
+interface Props {
+  verified?: number;
+  fraud?: number;
+}
 
 const CustomTooltip = ({
   active,
@@ -26,21 +27,30 @@ const CustomTooltip = ({
   );
 };
 
-export function FraudDonutChart() {
+export function FraudDonutChart({ verified = 0, fraud = 0 }: Props) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  const total = verified + fraud;
+  const verifiedPct = total > 0 ? Math.round((verified / total) * 100) : 0;
+  const fraudPct    = total > 0 ? Math.round((fraud / total) * 100)    : 0;
+
+  const DATA = [
+    { name: "Verified", value: verifiedPct, color: "#00B4A6" },
+    { name: "Fraud",    value: fraudPct,    color: "#EF4444" },
+  ];
+
   return (
     <div
       className="bg-white rounded-xl p-6 flex flex-col gap-4"
       style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04)" }}
     >
-      {/* Header */}
       <div>
         <h2 className="text-[14px] font-semibold text-[#1C2536]">Fraud vs Verified</h2>
-        <p className="text-[13px] text-[#637381]">This week's transactions</p>
+        <p className="text-[13px] text-[#637381]">This period's transactions</p>
       </div>
 
-      {/* Chart with fixed height so ResponsiveContainer resolves correctly */}
-      <div className="relative" style={{ height: 200 }}>
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="relative" style={{ height: 200, minWidth: 0 }}>
+        {mounted ? <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={DATA}
@@ -61,16 +71,14 @@ export function FraudDonutChart() {
             </Pie>
             <Tooltip content={<CustomTooltip />} />
           </PieChart>
-        </ResponsiveContainer>
+        </ResponsiveContainer> : null}
 
-        {/* Centre label — overlaid absolutely */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <p className="text-[28px] font-bold text-[#1C2536] tracking-[-0.5px]">94%</p>
+          <p className="text-[28px] font-bold text-[#1C2536] tracking-[-0.5px]">{verifiedPct}%</p>
           <p className="text-[12px] text-[#919EAB]">Verified</p>
         </div>
       </div>
 
-      {/* Legend */}
       <div className="flex justify-center gap-6">
         {DATA.map((d) => (
           <div key={d.name} className="flex items-center gap-2">
